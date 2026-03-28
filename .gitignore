@@ -1,0 +1,8 @@
+# Office temporary files
+~$*
+*.tmp
+
+# Windows metadata
+Thumbs.db
+ehthumbs.db
+Desktop.ini
