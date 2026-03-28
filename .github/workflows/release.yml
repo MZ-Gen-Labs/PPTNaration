@@ -25,12 +25,12 @@ jobs:
       - name: Compile Inno Setup Installer
         run: |
           # .iss ファイルのパスを .github\installer 配下に指定 (先頭に & を追加)
-          & "C:\Program Files (x86)\Inno Setup 6\iscc.exe" "/DMyAppVersion=$env:VERSION" "installer\PPTGenVoice2.iss"
+          & "C:\Program Files (x86)\Inno Setup 6\iscc.exe" "/DMyAppVersion=$env:VERSION" "installer\PPTNaration.iss"
 
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/PPTGenVoice2.ppam
-            Output/PPTGenVoice2_Setup_*.exe
+            dist/PPTNaration.ppam
+            Output/PPTNaration_Setup_*.exe
           generate_release_notes: true

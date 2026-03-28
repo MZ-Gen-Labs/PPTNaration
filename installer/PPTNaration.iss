@@ -4,21 +4,21 @@
 #endif
 
 [Setup]
-AppId=PPTGenVoice2
-AppName=PPTGenVoice2
+AppId=PPTNaration
+AppName=PPTNaration
 AppVersion={#MyAppVersion}
 AppPublisher=MZ-Gen-Labs
 
-UninstallDisplayName=PPTGenVoice2
+UninstallDisplayName=PPTNaration
 
 ; アンインストーラーの保存先をユーザーのLocalAppDataに設定し、エラーを回避
-DefaultDirName={localappdata}\PPTGenVoice2
+DefaultDirName={localappdata}\PPTNaration
 ; フォルダ選択画面を非表示にする（サイレントインストール風にするため）
 DisableDirPage=yes
 
 ; 出力先ディレクトリを2つ上の階層の「Output」フォルダに指定
 OutputDir=..\Output
-OutputBaseFilename=PPTGenVoice2_Setup_{#MyAppVersion}
+OutputBaseFilename=PPTNaration_Setup_{#MyAppVersion}
 Compression=lzma
 SolidCompression=yes
 PrivilegesRequired=lowest
@@ -26,13 +26,13 @@ CloseApplications=yes
 
 [Files]
 ; 2つ上の階層（プロジェクトルート）にあるファイルを指定 (改行せずに1行で記述)
-Source: "..\dist\PPTGenVoice2.ppam"; DestDir: "{userappdata}\Microsoft\AddIns"; Flags: ignoreversion overwritereadonly
+Source: "..\dist\PPTNaration.ppam"; DestDir: "{userappdata}\Microsoft\AddIns"; Flags: ignoreversion overwritereadonly
 
 [Registry]
 ; (改行せずに1行で記述)
-Root: HKCU; Subkey: "SOFTWARE\Microsoft\Office\16.0\PowerPoint\AddIns\PPTGenVoice2"; Flags: uninsdeletekey
-Root: HKCU; Subkey: "SOFTWARE\Microsoft\Office\16.0\PowerPoint\AddIns\PPTGenVoice2"; ValueType: string; ValueName: "Path"; ValueData: "{userappdata}\Microsoft\AddIns\PPTGenVoice2.ppam"
-Root: HKCU; Subkey: "SOFTWARE\Microsoft\Office\16.0\PowerPoint\AddIns\PPTGenVoice2"; ValueType: dword; ValueName: "AutoLoad"; ValueData: "$ffffffff"
+Root: HKCU; Subkey: "SOFTWARE\Microsoft\Office\16.0\PowerPoint\AddIns\PPTNaration"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "SOFTWARE\Microsoft\Office\16.0\PowerPoint\AddIns\PPTNaration"; ValueType: string; ValueName: "Path"; ValueData: "{userappdata}\Microsoft\AddIns\PPTNaration.ppam"
+Root: HKCU; Subkey: "SOFTWARE\Microsoft\Office\16.0\PowerPoint\AddIns\PPTNaration"; ValueType: dword; ValueName: "AutoLoad"; ValueData: "$ffffffff"
 
 [Languages]
 Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
