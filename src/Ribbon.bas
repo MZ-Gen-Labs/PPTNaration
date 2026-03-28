@@ -12,14 +12,9 @@ Public useAudioFolder As Boolean
 Public processDiff As Boolean
 Public Ribbon As IRibbonUI
 Public circleXPosition As Integer
-
 Public hideAudioIcon As Boolean
+
 Private Const InitialHideAudioIcon As Boolean = False
-
-Private sysPrompt1Text As String
-Private sysPrompt2Text As String
-Private sysPrompt3Text As String
-
 Private Const InitialStartDelay As Double = 2#
 Private Const InitialEndDelay As Double = 3#
 Private Const InitialAudioXPosition As Integer = -50
@@ -28,23 +23,24 @@ Private Const InitialDoAllSlides As Boolean = False
 Private Const InitialDoOverride As Boolean = True
 Private Const InitialUseAudioFolder As Boolean = False
 Private Const InitialProcessDiff As Boolean = True
-Private Const SettingsFileName As String = "xmal_settings.txt"
 Private Const InitialCircleXPosition As Integer = -50
 
+' ★修正1: 保存ファイル名をスッキリ変更
+Private Const SettingsFileName As String = "settings.txt"
 
 ' 設定ファイルのパスを取得する関数
 Private Function GetSettingsFilePath() As String
     Dim localAppDataPath As String
     localAppDataPath = Environ("LOCALAPPDATA")
 
-    ' xmalアドイン用のフォルダを作成（存在しない場合）
-    Dim xmalFolderPath As String
-    xmalFolderPath = localAppDataPath & "\xmal_addin"
-    If Dir(xmalFolderPath, vbDirectory) = "" Then
-        MkDir xmalFolderPath
+    ' ★修正1: フォルダ名を "PPTNaration" に統一
+    Dim appFolderPath As String
+    appFolderPath = localAppDataPath & "\PPTNaration"
+    If Dir(appFolderPath, vbDirectory) = "" Then
+        MkDir appFolderPath
     End If
 
-    GetSettingsFilePath = xmalFolderPath & "\" & SettingsFileName
+    GetSettingsFilePath = appFolderPath & "\" & SettingsFileName
 End Function
 
 ' 初期化コード
@@ -70,14 +66,14 @@ Sub ResetSettings()
     useAudioFolder = InitialUseAudioFolder
     processDiff = InitialProcessDiff
     circleXPosition = InitialCircleXPosition
-    Ribbon.InvalidateControl "circleXPositionDropdown"
     hideAudioIcon = InitialHideAudioIcon
-    Ribbon.InvalidateControl "hideAudioIconBox"
 
     SaveSettings
 
     ' リボンUIの更新
     If Not Ribbon Is Nothing Then
+        Ribbon.InvalidateControl "circleXPositionDropdown"
+        Ribbon.InvalidateControl "hideAudioIconBox"
         Ribbon.InvalidateControl "startDelayBox"
         Ribbon.InvalidateControl "endDelayBox"
         Ribbon.InvalidateControl "transitTimeBox"
@@ -87,23 +83,11 @@ Sub ResetSettings()
         Ribbon.InvalidateControl "processDiffBox"
         Ribbon.InvalidateControl "audioXPositionDropdown"
     Else
-        Debug.Print "Ribbon オブジェクトが Nothing のため、リボンの更新をスキップします。"
-        Call GetRibbonObject ' 再初期化を試みる
-        If Not Ribbon Is Nothing Then
-            Ribbon.InvalidateControl "startDelayBox"
-            Ribbon.InvalidateControl "endDelayBox"
-            Ribbon.InvalidateControl "transitTimeBox"
-            Ribbon.InvalidateControl "doAllSlidesBox"
-            Ribbon.InvalidateControl "doOverrideBox"
-            Ribbon.InvalidateControl "useAudioFolderBox"
-            Ribbon.InvalidateControl "processDiffBox"
-            Ribbon.InvalidateControl "audioXPositionDropdown"
-        Else
-            MsgBox "リボンオブジェクトの再取得に失敗しました。", vbCritical
-        End If
+        ' ★修正3: デッドコードを削除し、純粋なエラーハンドリングのみに
+        Call HandleRibbonLoss
     End If
 
-    MsgBox "Settings have been reset to default values.", vbInformation
+    MsgBox "変数を初期値にリセットしました。", vbInformation
     Debug.Print "Settings reset to default values"
 End Sub
 
@@ -123,15 +107,16 @@ Sub RibbonOnLoad(ribbonUI As IRibbonUI)
     InitializeVariables
 End Sub
 
+' ==========================================
 ' XML UI コールバック
-
+' ==========================================
 Sub OnStartDelayChange(control As IRibbonControl, text As String)
     If Ribbon Is Nothing Then Call HandleRibbonLoss: Exit Sub
     If IsNumeric(text) Then
         startDelay = CDbl(text)
-        SaveSettings  ' 設定変更時に即座に保存
+        SaveSettings
     Else
-        MsgBox "Please enter a valid number.", vbExclamation
+        MsgBox "有効な数値を入力してください。", vbExclamation
         Ribbon.InvalidateControl control.id
     End If
 End Sub
@@ -140,9 +125,9 @@ Sub OnEndDelayChange(control As IRibbonControl, text As String)
     If Ribbon Is Nothing Then Call HandleRibbonLoss: Exit Sub
     If IsNumeric(text) Then
         endDelay = CDbl(text)
-        SaveSettings  ' 設定変更時に即座に保存
+        SaveSettings
     Else
-        MsgBox "Please enter a valid number.", vbExclamation
+        MsgBox "有効な数値を入力してください。", vbExclamation
         Ribbon.InvalidateControl control.id
     End If
 End Sub
@@ -151,54 +136,67 @@ Sub OnTransitTimeChange(control As IRibbonControl, text As String)
     If Ribbon Is Nothing Then Call HandleRibbonLoss: Exit Sub
     If IsNumeric(text) Then
         transitTime = CDbl(text)
-        SaveSettings  ' 設定変更時に即座に保存
+        SaveSettings
     Else
-        MsgBox "Please enter a valid number.", vbExclamation
+        MsgBox "有効な数値を入力してください。", vbExclamation
         Ribbon.InvalidateControl control.id
     End If
 End Sub
 
 Sub OnDoAllSlidesChange(control As IRibbonControl, pressed As Boolean)
     doAllSlides = pressed
-    SaveSettings  ' 設定変更時に即座に保存
+    SaveSettings
 End Sub
 
 Sub OnDoOverrideChange(control As IRibbonControl, pressed As Boolean)
     doOverride = pressed
-    SaveSettings  ' 設定変更時に即座に保存
+    SaveSettings
 End Sub
 
 Sub OnUseAudioFolderChange(control As IRibbonControl, pressed As Boolean)
     useAudioFolder = pressed
-    SaveSettings  ' 設定変更時に即座に保存
+    SaveSettings
 End Sub
 
 Sub OnProcessDiffChange(control As IRibbonControl, pressed As Boolean)
     processDiff = pressed
-    SaveSettings  ' 設定変更時に即座に保存
+    SaveSettings
 End Sub
 
 Sub OnAudioXPositionChange(control As IRibbonControl, id As String, index As Integer)
     If Ribbon Is Nothing Then Call HandleRibbonLoss: Exit Sub
     Select Case id
-        Case "pos50"
-            audioXPosition = 50
-        Case "pos-50"
-            audioXPosition = -50
-        Case "pos-100"
-            audioXPosition = -100
-        Case "pos-150"
-            audioXPosition = -150
-        Case "pos-200"
-            audioXPosition = -200
-        Case "pos-250"
-            audioXPosition = -250
+        Case "pos50": audioXPosition = 50
+        Case "pos-50": audioXPosition = -50
+        Case "pos-100": audioXPosition = -100
+        Case "pos-150": audioXPosition = -150
+        Case "pos-200": audioXPosition = -200
+        Case "pos-250": audioXPosition = -250
     End Select
-    SaveSettings  ' 設定変更時に即座に保存
+    SaveSettings
 End Sub
 
+Sub OnCircleXPositionChange(control As IRibbonControl, id As String, index As Integer)
+    If Ribbon Is Nothing Then Call HandleRibbonLoss: Exit Sub
+    Select Case id
+        Case "circle50":  circleXPosition = 50
+        Case "circle-50": circleXPosition = -50
+        Case "circle-100": circleXPosition = -100
+        Case "circle-150": circleXPosition = -150
+        Case "circle-200": circleXPosition = -200
+        Case "circle-250": circleXPosition = -250
+    End Select
+    SaveSettings
+End Sub
 
+Sub OnHideAudioIconChange(control As IRibbonControl, pressed As Boolean)
+    hideAudioIcon = pressed
+    SaveSettings
+End Sub
+
+' ==========================================
 ' 初期値を取得するコールバック
+' ==========================================
 Sub GetStartDelay(control As IRibbonControl, ByRef returnedVal)
     returnedVal = startDelay
 End Sub
@@ -227,36 +225,35 @@ Sub GetProcessDiff(control As IRibbonControl, ByRef returnedVal)
     returnedVal = processDiff
 End Sub
 
+Sub GetHideAudioIcon(control As IRibbonControl, ByRef returnedVal)
+    returnedVal = hideAudioIcon
+End Sub
+
 Sub GetAudioXPositionIndex(control As IRibbonControl, ByRef returnedVal)
     Select Case audioXPosition
-        Case 50
-            returnedVal = 0
-        Case -50
-            returnedVal = 1
-        Case -100
-            returnedVal = 2
-        Case -150
-            returnedVal = 3
-        Case -200
-            returnedVal = 4
-        Case -250
-            returnedVal = 5
+        Case 50: returnedVal = 0
+        Case -50: returnedVal = 1
+        Case -100: returnedVal = 2
+        Case -150: returnedVal = 3
+        Case -200: returnedVal = 4
+        Case -250: returnedVal = 5
     End Select
 End Sub
 
-' 変数を表示するコマンド
-Sub ShowVariables(control As IRibbonControl)
-    MsgBox "Start Delay: " & startDelay & vbCrLf & _
-           "End Delay: " & endDelay & vbCrLf & _
-           "Audio X Position: " & audioXPosition & vbCrLf & _
-           "Transit Time: " & transitTime & vbCrLf & _
-           "Do All Slides: " & doAllSlides & vbCrLf & _
-           "Do Override: " & doOverride & vbCrLf & _
-           "Use Audio Folder: " & useAudioFolder & vbCrLf & _
-           "Process Diff Text: " & processDiff
+Sub GetCircleXPositionIndex(control As IRibbonControl, ByRef returnedVal)
+    Select Case circleXPosition
+        Case 50: returnedVal = 0
+        Case -50: returnedVal = 1
+        Case -100: returnedVal = 2
+        Case -150: returnedVal = 3
+        Case -200: returnedVal = 4
+        Case -250: returnedVal = 5
+    End Select
 End Sub
 
-' 設定を保存する関数
+' ==========================================
+' 設定の保存と読み込み
+' ==========================================
 Sub SaveSettings()
     On Error GoTo ErrorHandler
     Dim fileNum As Integer
@@ -275,16 +272,13 @@ Sub SaveSettings()
     Print #fileNum, "ProcessDiff=" & processDiff
     Print #fileNum, "HideAudioIcon=" & hideAudioIcon
     Close #fileNum
-'    MsgBox "Settings saved successfully to " & settingsFilePath, vbInformation
     Debug.Print "Settings saved successfully to " & settingsFilePath
     Exit Sub
 ErrorHandler:
-    MsgBox "Error saving settings: " & Err.Description, vbCritical
-    Debug.Print "Error saving settings: " & Err.Description
+    MsgBox "設定の保存中にエラーが発生しました: " & Err.Description, vbCritical
     If fileNum > 0 Then Close #fileNum
 End Sub
 
-' 設定を読み込む関数
 Sub LoadSettings()
     On Error GoTo ErrorHandler
     Dim fileNum As Integer
@@ -299,26 +293,16 @@ Sub LoadSettings()
         parts = Split(line, "=")
         If UBound(parts) = 1 Then
             Select Case parts(0)
-                Case "StartDelay"
-                    startDelay = CDbl(parts(1))
-                Case "EndDelay"
-                    endDelay = CDbl(parts(1))
-                Case "AudioXPosition"
-                    audioXPosition = CInt(parts(1))
-                Case "CircleXPosition"
-                    circleXPosition = CInt(parts(1))
-                Case "TransitTime"
-                    transitTime = CDbl(parts(1))
-                Case "DoAllSlides"
-                    doAllSlides = CBool(parts(1))
-                Case "DoOverride"
-                    doOverride = CBool(parts(1))
-                Case "UseAudioFolder"
-                    useAudioFolder = CBool(parts(1))
-                Case "ProcessDiff"
-                    processDiff = CBool(parts(1))
-                Case "HideAudioIcon"
-                    hideAudioIcon = CBool(parts(1))
+                Case "StartDelay": startDelay = CDbl(parts(1))
+                Case "EndDelay": endDelay = CDbl(parts(1))
+                Case "AudioXPosition": audioXPosition = CInt(parts(1))
+                Case "CircleXPosition": circleXPosition = CInt(parts(1))
+                Case "TransitTime": transitTime = CDbl(parts(1))
+                Case "DoAllSlides": doAllSlides = CBool(parts(1))
+                Case "DoOverride": doOverride = CBool(parts(1))
+                Case "UseAudioFolder": useAudioFolder = CBool(parts(1))
+                Case "ProcessDiff": processDiff = CBool(parts(1))
+                Case "HideAudioIcon": hideAudioIcon = CBool(parts(1))
             End Select
         End If
     Loop
@@ -326,92 +310,38 @@ Sub LoadSettings()
     Debug.Print "Settings loaded successfully"
     Exit Sub
 ErrorHandler:
-    MsgBox "Error loading settings: " & Err.Description, vbCritical
-    Debug.Print "Error loading settings: " & Err.Description
+    MsgBox "設定の読み込み中にエラーが発生しました: " & Err.Description, vbCritical
     If fileNum > 0 Then Close #fileNum
 End Sub
 
-' ファイルが存在するかチェックする関数
 Function FileExists(filePath As String) As Boolean
     FileExists = Dir(filePath) <> ""
 End Function
 
-' PowerPointが終了する際に呼び出される関数
 Sub Auto_Exit(ByVal Pres As Presentation)
     SaveSettings
-    Debug.Print "Auto_Exit called, settings saved"
 End Sub
 
-' アドインが読み込まれたときに呼び出される関数
 Sub Auto_Open()
     InitializeVariables
-    Debug.Print "Auto_Open called, variables initialized"
 End Sub
 
-' アニメーション-プレビューの実行
-Sub TestPreview()
+' ==========================================
+' スライド操作とその他の機能
+' ==========================================
+Sub TestPreview(control As IRibbonControl)
     On Error Resume Next
     Application.CommandBars.ExecuteMso "AnimationPreview"
     On Error GoTo 0
 End Sub
 
-' リボンオブジェクトを取得する処理
-Sub GetRibbonObject()
-    Dim objAddIn As COMAddIn
-
-    On Error Resume Next
-    Set objAddIn = Application.COMAddIns("PPTNaration.ThisAddIn") ' あなたのアドインの ProgID
-    On Error GoTo 0
-
-    If Not objAddIn Is Nothing Then
-        ' Ribbon オブジェクトを再取得
-        On Error Resume Next
-        Set Ribbon = objAddIn.Object.GetRibbonUI() ' IRibbonExtensibility インターフェースの GetRibbonUI メソッドを使用
-        On Error GoTo 0
-        If Ribbon Is Nothing Then
-            Debug.Print "IRibbonUI オブジェクトの再取得に失敗しました。"
-        End If
-    Else
-        Debug.Print "COMAddIn オブジェクトの取得に失敗しました。"
-    End If
-End Sub
-
 ' リボンオブジェクトが Nothing だった場合の共通処理
 Sub HandleRibbonLoss()
-    Debug.Print "Ribbon オブジェクトが Nothing です。再初期化を試みます。"
-    Call GetRibbonObject ' Ribbon オブジェクトを再取得
-    If Not Ribbon Is Nothing Then
-        InitializeVariables ' 初期化処理を再度実行
-    Else
-        MsgBox "リボンオブジェクトの再取得に失敗しました。", vbCritical
-    End If
+    Debug.Print "Ribbon オブジェクトが Nothing です。"
+    MsgBox "VBAの内部エラーにより、リボンメニューの表示更新が一時的に停止しました。" & vbCrLf & _
+           "機能自体は使用可能ですが、チェックボックス等の表示を元に戻すにはPowerPointを再起動してください。", vbExclamation, "リボンの状態エラー"
 End Sub
 
-Sub OnCircleXPositionChange(control As IRibbonControl, id As String, index As Integer)
-    If Ribbon Is Nothing Then Call HandleRibbonLoss: Exit Sub
-    Select Case id
-        Case "circle50":  circleXPosition = 50
-        Case "circle-50": circleXPosition = -50
-        Case "circle-100": circleXPosition = -100
-        Case "circle-150": circleXPosition = -150
-        Case "circle-200": circleXPosition = -200
-        Case "circle-250": circleXPosition = -250
-    End Select
-    SaveSettings
-End Sub
-
-Sub GetCircleXPositionIndex(control As IRibbonControl, ByRef returnedVal)
-    Select Case circleXPosition
-        Case 50: returnedVal = 0
-        Case -50: returnedVal = 1
-        Case -100: returnedVal = 2
-        Case -150: returnedVal = 3
-        Case -200: returnedVal = 4
-        Case -250: returnedVal = 5
-    End Select
-End Sub
-
-' 現在表示・選択されているスライドを安全に取得する共通関数
 Function GetTargetSlide() As Slide
     On Error Resume Next
     Dim sld As Slide
@@ -424,12 +354,10 @@ Function GetTargetSlide() As Slide
     Set GetTargetSlide = sld
 End Function
 
-' スライドをトップ（先頭）に移動
 Sub MoveSlideToFirst(control As IRibbonControl)
     ActiveWindow.View.GotoSlide index:=1
 End Sub
 
-' スライドを一つ前に移動
 Sub MoveSlideUp(control As IRibbonControl)
     Dim currentIndex As Integer
     currentIndex = ActiveWindow.View.Slide.SlideIndex
@@ -438,7 +366,6 @@ Sub MoveSlideUp(control As IRibbonControl)
     End If
 End Sub
 
-' スライドを一つ後に移動
 Sub MoveSlideDown(control As IRibbonControl)
     Dim currentIndex As Integer
     Dim totalSlides As Integer
@@ -449,38 +376,20 @@ Sub MoveSlideDown(control As IRibbonControl)
     End If
 End Sub
 
-' スライドを最後に移動
 Sub MoveSlideToLast(control As IRibbonControl)
     ActiveWindow.View.GotoSlide index:=ActivePresentation.Slides.Count
 End Sub
 
-Sub OnHideAudioIconChange(control As IRibbonControl, pressed As Boolean)
-    hideAudioIcon = pressed
-    SaveSettings  ' 設定変更時に即座に保存
-End Sub
-
-Sub GetHideAudioIcon(control As IRibbonControl, ByRef returnedVal)
-    returnedVal = hideAudioIcon
-End Sub
-
-' 次のスライドへ移動し、直後にプレビューを実行する
 Sub MoveNextAndPreview(control As IRibbonControl)
     Dim currentIndex As Integer
     Dim totalSlides As Integer
     
-    ' 現在のスライド番号と全スライド数を取得
     currentIndex = ActiveWindow.View.Slide.SlideIndex
     totalSlides = ActivePresentation.Slides.Count
     
-    ' 最後のスライドでなければ処理を実行
     If currentIndex < totalSlides Then
-        ' 1. 次のスライドへ移動
         ActiveWindow.View.GotoSlide index:=currentIndex + 1
-        
-        ' 2. PPTの画面描画（スライド切り替え）が完了するのを一瞬待つ
         DoEvents
-        
-        ' 3. プレビューコマンドを実行
         On Error Resume Next
         Application.CommandBars.ExecuteMso "AnimationPreview"
         On Error GoTo 0
