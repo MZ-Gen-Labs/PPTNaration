@@ -1,7 +1,7 @@
 <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="RibbonOnLoad">
   <ribbon>
     <tabs>
-      <tab id="CustomTab" label="ナレーション2">
+      <tab id="CustomTab" label="ナレーション">
         <group id="GroupNote" label="ノート操作">
           <button id="Btn04" label="ノート → &#xD;&#xA;テキストファイル" size="large" imageMso="ExportTextFile" onAction="ExportNoteToText" />
           <button id="Btn05" label="ノート ← &#xD;&#xA;テキストファイル" size="large" imageMso="ImportTextFile" onAction="ImportNoteFromText" />

@@ -360,7 +360,7 @@ Sub GetRibbonObject()
     Dim objAddIn As COMAddIn
 
     On Error Resume Next
-    Set objAddIn = Application.COMAddIns("PPTGenVoice2.ThisAddIn") ' あなたのアドインの ProgID
+    Set objAddIn = Application.COMAddIns("PPTNaration.ThisAddIn") ' あなたのアドインの ProgID
     On Error GoTo 0
 
     If Not objAddIn Is Nothing Then
