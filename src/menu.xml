@@ -36,7 +36,7 @@
           <toggleButton id="hideAudioIconBox" label="音声アイコン&#xD;&#xA;を非表示" size="large" imageMso="AnimationAudio" onAction="OnHideAudioIconChange" getPressed="GetHideAudioIcon" />        </group>
         <group id="GroupSetting" label="設定">
           <checkBox id="doAllSlidesBox" label="全スライド処理" onAction="OnDoAllSlidesChange" getPressed="GetDoAllSlides"/>
-          <checkBox id="processDiffBox" label="差分処理" onAction="OnProcessDiffChange" getPressed="GetProcessDiff"/>
+          <!-- <checkBox id="processDiffBox" label="差分処理" onAction="OnProcessDiffChange" getPressed="GetProcessDiff"/> -->
           <checkBox id="doOverrideBox" label="上書処理" onAction="OnDoOverrideChange" getPressed="GetDoOverride"/>
           <button id="resetSettingsButton" label="変数初期化" size="large" imageMso="ResetToTemplate" onAction="OnResetSettings" />
         </group>
