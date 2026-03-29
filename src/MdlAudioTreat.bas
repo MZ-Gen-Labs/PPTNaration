@@ -164,18 +164,33 @@ End Sub
 
 Sub MoveAudioInSlide(sld As Slide)
     Dim shp As Shape
+    Dim eff As Effect ' ★追加：アニメーション情報を取得するための変数
+    
     For Each shp In sld.Shapes
         If shp.Type = msoMedia Then
             ' ★修正点：座標のズレに影響されないよう、すべてタグで判定する
             If shp.Tags.Item("AudioObject") = "True" Then
+                ' 1. 位置の再設定
                 shp.Left = sld.Master.Width + audioXPosition
                 shp.Top = sld.Master.Height - 50
 
+                ' 2. 音声アイコンの表示/非表示の再設定
                 If hideAudioIcon Then
                     shp.AnimationSettings.PlaySettings.HideWhileNotPlaying = msoTrue
                 Else
                     shp.AnimationSettings.PlaySettings.HideWhileNotPlaying = msoFalse
                 End If
+                
+                ' 3. ★追加：開始遅延の再設定
+                ' スライド内の全アニメーション（タイムライン）をループ処理
+                For Each eff In sld.TimeLine.MainSequence
+                    ' アニメーションの対象がこの音声ファイルであり、かつ「再生」エフェクトである場合
+                    If eff.Shape.Name = shp.Name And eff.EffectType = msoAnimEffectMediaPlay Then
+                        ' 現在の startDelay（開始遅延）の値を上書き設定する
+                        eff.Timing.TriggerDelayTime = startDelay
+                    End If
+                Next eff
+                
             End If
         End If
     Next shp

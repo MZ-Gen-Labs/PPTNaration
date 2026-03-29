@@ -11,7 +11,7 @@
         </group>
         <group id="GroupAudio" label="音声ファイル操作">
           <button id="Btn01" label="音声ファイル追加" size="large" imageMso="AnimationAudio" onAction="AddAudioToSlides" />
-          <button id="Btn02" label="音声ファイル位置調整" size="large" imageMso="GoLtrDown" onAction="MoveAudioInSlides" />
+          <button id="Btn02" label="音声ファイル更新" size="large" imageMso="Refresh" onAction="MoveAudioInSlides" />
           <editBox id="startDelayBox" label="開始遅延" onChange="OnStartDelayChange" getText="GetStartDelay" />
           <editBox id="endDelayBox" label="終了遅延" onChange="OnEndDelayChange" getText="GetEndDelay" />
           <editBox id="transitTimeBox" label="自動切換" onChange="OnTransitTimeChange" getText="GetTransitTime" />
