@@ -70,7 +70,7 @@ ErrorHandler:
 End Sub
 
 Sub ImportNoteFromText()
-    ' テキストファイルからノートを読み込み、各スライドに挿入するサブルーチン (高速化＆UTF-8対応版)
+    ' テキストファイルからノートを読み込み、各スライドに挿入するサブルーチン (改行修正版)
     Dim sld As Slide
     Dim textFileName As String
     Dim lineText As String
@@ -107,25 +107,28 @@ Sub ImportNoteFromText()
     stream.Open
     stream.LoadFromFile textFileName
     
-    ' 全テキストを一括で読み込む（高速化）
+    ' 全テキストを一括で読み込む
     allText = stream.ReadText
     stream.Close
     Set stream = Nothing
     
-    ' 改行コード(LF)で分割
+    ' ★修正ポイント：PowerPoint内部の改行(vbCr)と、ファイルの改行(vbCrLf)を
+    ' 全て一律で vbLf に統一してから分割することで、スライド内の改行を保護する。
+    allText = Replace(allText, vbCrLf, vbLf)
+    allText = Replace(allText, vbCr, vbLf)
+    
+    ' 統一した vbLf で行ごとに分割
     lines = Split(allText, vbLf)
     
     slideNumber = 0
     Set targetSlide = Nothing
 
-    ' 各行を処理 (テキストの行数分だけループ)
+    ' 各行を処理
     For i = 0 To UBound(lines)
-        ' CR(キャリッジリターン)が残っている場合は除去
-        lineText = Replace(lines(i), vbCr, "")
+        lineText = lines(i) ' ※ここで Replace(..., vbCr, "") をしない！
         
         If InStr(lineText, "<<< Slide ") = 1 Then
             slideNumber = CLng(Replace(lineText, "<<< Slide ", ""))
-            ' ターゲットとなるスライドを取得し、変数に保持する
             Set targetSlide = GetSlideByNumber(slideNumber)
         ElseIf InStr(lineText, "# Slide ") = 1 Then
             slideNumber = CLng(Mid(lineText, 9))
@@ -136,12 +139,23 @@ Sub ImportNoteFromText()
                 On Error Resume Next
                 Set notesShape = GetNotesBodyShape(targetSlide)
                 If Not notesShape Is Nothing Then
-                    notesShape.TextFrame.TextRange.text = notesShape.TextFrame.TextRange.text & lineText & vbCrLf
+                    notesShape.TextFrame.TextRange.text = _
+                        notesShape.TextFrame.TextRange.text & lineText & vbCrLf
                 End If
                 On Error GoTo ErrorHandler
             End If
         End If
     Next i
+
+    ' ★追加改善：インポート後に、各スライドのノート末尾に溜まった余分な改行を綺麗に削除する
+    For Each sld In ActivePresentation.Slides
+        On Error Resume Next
+        Set notesShape = GetNotesBodyShape(sld)
+        If Not notesShape Is Nothing Then
+            notesShape.TextFrame.TextRange.text = TrimWhitespace(notesShape.TextFrame.TextRange.text)
+        End If
+        On Error GoTo ErrorHandler
+    Next sld
 
     Exit Sub
 
