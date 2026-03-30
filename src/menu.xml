@@ -12,6 +12,10 @@
         <group id="GroupAudio" label="音声ファイル操作">
           <button id="Btn01" label="音声ファイル追加" size="large" imageMso="AnimationAudio" onAction="AddAudioToSlides" />
           <button id="Btn02" label="音声ファイル更新" size="large" imageMso="Refresh" onAction="MoveAudioInSlides" />
+
+          <button id="Btn03" label="音声ファイル削除" size="large" imageMso="Delete" onAction="RemoveAudioFromSlides" />
+
+
           <editBox id="startDelayBox" label="開始遅延" onChange="OnStartDelayChange" getText="GetStartDelay" />
           <editBox id="endDelayBox" label="終了遅延" onChange="OnEndDelayChange" getText="GetEndDelay" />
           <editBox id="transitTimeBox" label="自動切換" onChange="OnTransitTimeChange" getText="GetTransitTime" />
@@ -31,13 +35,15 @@
             <item id="circle-200" label="-200" />
             <item id="circle-250" label="-250" />
           </dropDown>
-          <checkBox id="useAudioFolderBox" label="audioフォルダを使用" onAction="OnUseAudioFolderChange" getPressed="GetUseAudioFolder"/>
-          <button id="Btn03" label="音声ファイル削除" size="large" imageMso="Delete" onAction="RemoveAudioFromSlides" />
           <toggleButton id="hideAudioIconBox" label="音声アイコン&#xD;&#xA;を非表示" size="large" imageMso="AnimationAudio" onAction="OnHideAudioIconChange" getPressed="GetHideAudioIcon" />        </group>
         <group id="GroupSetting" label="設定">
           <checkBox id="doAllSlidesBox" label="全スライド処理" onAction="OnDoAllSlidesChange" getPressed="GetDoAllSlides"/>
           <!-- <checkBox id="processDiffBox" label="差分処理" onAction="OnProcessDiffChange" getPressed="GetProcessDiff"/> -->
           <checkBox id="doOverrideBox" label="上書処理" onAction="OnDoOverrideChange" getPressed="GetDoOverride"/>
+
+          <checkBox id="useAudioFolderBox" label="audioフォルダを使用" onAction="OnUseAudioFolderChange" getPressed="GetUseAudioFolder"/>
+
+
           <button id="resetSettingsButton" label="変数初期化" size="large" imageMso="ResetToTemplate" onAction="OnResetSettings" />
         </group>
         <group id="GroupAll" label="PPT実行">
