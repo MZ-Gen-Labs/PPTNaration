@@ -19,6 +19,7 @@ Sub ExportNoteToText()
     Dim notesText As String
     Dim textFileName As String
     Dim stream As Object ' ADODB.Stream
+    Dim notesShape As Shape
 
     If ActivePresentation.Path = "" Then
         MsgBox "プレゼンテーションが保存されていません。一度ファイルを保存してから実行してください。", vbExclamation, "保存確認"
@@ -39,7 +40,10 @@ Sub ExportNoteToText()
         ' ノートのテキストを抽出する (エラー回避付き)
         notesText = ""
         On Error Resume Next
-        notesText = sld.NotesPage.Shapes.Placeholders(2).TextFrame.TextRange.text
+        Set notesShape = GetNotesBodyShape(sld)
+        If Not notesShape Is Nothing Then
+            notesText = notesShape.TextFrame.TextRange.text
+        End If
         On Error GoTo ErrorHandler ' エラーハンドラを戻す
 
         Dim slideNumber As Long
@@ -76,6 +80,7 @@ Sub ImportNoteFromText()
     Dim allText As String
     Dim lines() As String
     Dim i As Long
+    Dim notesShape As Shape
     
     On Error GoTo ErrorHandler
     textFileName = GetTextFullpath
@@ -88,7 +93,10 @@ Sub ImportNoteFromText()
     ' すべての既存のスライドのノートを削除する
     For Each sld In ActivePresentation.Slides
         On Error Resume Next
-        sld.NotesPage.Shapes.Placeholders(2).TextFrame.TextRange.text = ""
+        Set notesShape = GetNotesBodyShape(sld)
+        If Not notesShape Is Nothing Then
+            notesShape.TextFrame.TextRange.text = ""
+        End If
         On Error GoTo ErrorHandler
     Next sld
 
@@ -126,8 +134,10 @@ Sub ImportNoteFromText()
             ' スライドのノートにテキストを追加する (保持したスライドに対してのみ処理)
             If Not targetSlide Is Nothing Then
                 On Error Resume Next
-                targetSlide.NotesPage.Shapes.Placeholders(2).TextFrame.TextRange.text = _
-                    targetSlide.NotesPage.Shapes.Placeholders(2).TextFrame.TextRange.text & lineText & vbCrLf
+                Set notesShape = GetNotesBodyShape(targetSlide)
+                If Not notesShape Is Nothing Then
+                    notesShape.TextFrame.TextRange.text = notesShape.TextFrame.TextRange.text & lineText & vbCrLf
+                End If
                 On Error GoTo ErrorHandler
             End If
         End If
@@ -154,6 +164,26 @@ Private Function GetSlideByNumber(ByVal sNum As Long) As Slide
     Set GetSlideByNumber = Nothing
 End Function
 
+' -------------------------------------------------------------------------
+' ★新規追加：ノートの本文プレースホルダーを安全に取得する関数
+' -------------------------------------------------------------------------
+Private Function GetNotesBodyShape(sld As Slide) As Shape
+    Dim shp As Shape
+    On Error Resume Next
+    ' まずは本文プレースホルダー(ppPlaceholderBody)を探す
+    For Each shp In sld.NotesPage.Shapes
+        If shp.Type = msoPlaceholder Then
+            If shp.PlaceholderFormat.Type = ppPlaceholderBody Then
+                Set GetNotesBodyShape = shp
+                Exit Function
+            End If
+        End If
+    Next shp
+    ' 見つからなかった場合のフォールバック(従来のインデックス指定)
+    Set GetNotesBodyShape = sld.NotesPage.Shapes.Placeholders(2)
+    On Error GoTo 0
+End Function
+
 Sub AddNoteInSlides()
     Dim sld As Slide
     Dim slds As SlideRange
@@ -161,19 +191,14 @@ Sub AddNoteInSlides()
     If doAllSlides Then
         Set slds = ActivePresentation.Slides.Range
     Else
-        On Error Resume Next ' ▼ エラーが発生してもプログラムを止めずに次へ進む
-        
-        ' 1. まずは現在の選択状態（サムネイル、図形、テキストなど）からスライドの取得を試みる
+        On Error Resume Next
         Set slds = ActiveWindow.Selection.SlideRange
         
-        ' 2. リボン操作中などで上記が失敗(Nothing)した場合、現在画面に表示されているスライドを取得
         If slds Is Nothing Then
             Set slds = ActivePresentation.Slides.Range(ActiveWindow.View.Slide.SlideIndex)
         End If
+        On Error GoTo 0
         
-        On Error GoTo 0 ' ▲ エラー無視の設定を解除（以降の予期せぬエラーは通常通り表示する）
-        
-        ' 3. 万が一、何らかの理由でどうしても取得できなかった場合の安全装置
         If slds Is Nothing Then
             MsgBox "スライドを特定できませんでした。スライド画面を一度クリックしてから再実行してください。", vbExclamation, "スライド特定エラー"
             Exit Sub
@@ -182,17 +207,19 @@ Sub AddNoteInSlides()
     
     For Each sld In slds
         Dim slideText As String
-        Dim notesShape As Shape
-        Dim notesText As String
+        Dim targetNotesShape As Shape
         
-        ' スライドテキストを取得
+        ' スライドテキストを取得（グループ化対応版）
         slideText = GetSlideText(sld)
+        Set targetNotesShape = GetNotesBodyShape(sld)
         
-        If doOverride Then
-            sld.NotesPage.Shapes.Placeholders(2).TextFrame.TextRange.text = slideText
-        Else
-            If sld.NotesPage.Shapes.Placeholders(2).TextFrame.TextRange.text = "" Then
-                sld.NotesPage.Shapes.Placeholders(2).TextFrame.TextRange.text = slideText
+        If Not targetNotesShape Is Nothing Then
+            If doOverride Then
+                targetNotesShape.TextFrame.TextRange.text = slideText
+            Else
+                If targetNotesShape.TextFrame.TextRange.text = "" Then
+                    targetNotesShape.TextFrame.TextRange.text = slideText
+                End If
             End If
         End If
     Next sld
@@ -201,23 +228,19 @@ End Sub
 Sub RemoveNoteinSlides()
     Dim sld As Slide
     Dim slds As SlideRange
+    Dim targetNotesShape As Shape
     
     If doAllSlides Then
         Set slds = ActivePresentation.Slides.Range
     Else
-        On Error Resume Next ' ▼ エラーが発生してもプログラムを止めずに次へ進む
-        
-        ' 1. まずは現在の選択状態（サムネイル、図形、テキストなど）からスライドの取得を試みる
+        On Error Resume Next
         Set slds = ActiveWindow.Selection.SlideRange
         
-        ' 2. リボン操作中などで上記が失敗(Nothing)した場合、現在画面に表示されているスライドを取得
         If slds Is Nothing Then
             Set slds = ActivePresentation.Slides.Range(ActiveWindow.View.Slide.SlideIndex)
         End If
+        On Error GoTo 0
         
-        On Error GoTo 0 ' ▲ エラー無視の設定を解除（以降の予期せぬエラーは通常通り表示する）
-        
-        ' 3. 万が一、何らかの理由でどうしても取得できなかった場合の安全装置
         If slds Is Nothing Then
             MsgBox "スライドを特定できませんでした。スライド画面を一度クリックしてから再実行してください。", vbExclamation, "スライド特定エラー"
             Exit Sub
@@ -225,51 +248,63 @@ Sub RemoveNoteinSlides()
     End If
     
     For Each sld In slds
-        sld.NotesPage.Shapes.Placeholders(2).TextFrame.TextRange.text = ""
+        On Error Resume Next
+        Set targetNotesShape = GetNotesBodyShape(sld)
+        If Not targetNotesShape Is Nothing Then
+            targetNotesShape.TextFrame.TextRange.text = ""
+        End If
+        On Error GoTo 0
     Next sld
 End Sub
 
-' スライドからテキストを取得する関数
-Function GetSlideText(ByVal sld As Slide) As String
+' -------------------------------------------------------------------------
+' ★新規追加：グループ化された図形の中身も再帰的に探索してテキストを収集する関数
+' -------------------------------------------------------------------------
+Private Sub CollectTextShapes(ByVal shps As Object, ByRef shapeInfos() As ShapeInfo, ByRef shapeCount As Integer)
     Dim shp As Shape
+    Dim i As Integer
+    
+    For i = 1 To shps.Count
+        Set shp = shps(i)
+        
+        If shp.Type = msoGroup Then
+            ' グループ化されている場合は再帰呼び出しで中身を探索
+            CollectTextShapes shp.GroupItems, shapeInfos, shapeCount
+        Else
+            ' テキストフレームを持っているか確認
+            If shp.HasTextFrame Then
+                If shp.TextFrame.HasText Then
+                    shapeCount = shapeCount + 1
+                    ReDim Preserve shapeInfos(1 To shapeCount)
+                    shapeInfos(shapeCount).text = shp.TextFrame.TextRange.text
+                    shapeInfos(shapeCount).Top = shp.Top
+                    shapeInfos(shapeCount).Left = shp.Left
+                End If
+            End If
+        End If
+    Next i
+End Sub
+
+' スライドからテキストを取得する関数 (グループ化対応＆クリーンアップ版)
+Function GetSlideText(ByVal sld As Slide) As String
     Dim shapeInfos() As ShapeInfo
     Dim shapeCount As Integer
     Dim i As Integer, j As Integer
     Dim temp As ShapeInfo
     Dim resultText As String
     
-    ' シェイプの数を数える
     shapeCount = 0
-    For Each shp In sld.Shapes
-        If shp.HasTextFrame Then
-            If shp.TextFrame.HasText Then
-                shapeCount = shapeCount + 1
-            End If
-        End If
-    Next shp
     
-    ' 配列を初期化
-    If shapeCount > 0 Then
-        ReDim shapeInfos(1 To shapeCount)
-    Else
+    ' スライド内の全シェイプからテキストを収集（再帰処理でグループ化対応）
+    CollectTextShapes sld.Shapes, shapeInfos, shapeCount
+    
+    ' テキストが見つからなかった場合
+    If shapeCount = 0 Then
         GetSlideText = ""
         Exit Function
     End If
     
-    ' シェイプの情報を配列に格納
-    i = 1
-    For Each shp In sld.Shapes
-        If shp.HasTextFrame Then
-            If shp.TextFrame.HasText Then
-                shapeInfos(i).text = shp.TextFrame.TextRange.text
-                shapeInfos(i).Top = shp.Top
-                shapeInfos(i).Left = shp.Left
-                i = i + 1
-            End If
-        End If
-    Next shp
-    
-    ' バブルソートで並べ替え
+    ' バブルソートで並べ替え (上から下、左から右へ)
     For i = 1 To shapeCount - 1
         For j = 1 To shapeCount - i
             If (shapeInfos(j).Top - shapeInfos(j + 1).Top > 5) Or _
