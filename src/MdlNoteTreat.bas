@@ -39,6 +39,7 @@ Sub ExportNoteToText()
     For Each sld In ActivePresentation.Slides
         ' ノートのテキストを抽出する (エラー回避付き)
         notesText = ""
+   
         On Error Resume Next
         Set notesShape = GetNotesBodyShape(sld)
         If Not notesShape Is Nothing Then
@@ -194,6 +195,7 @@ Private Function GetNotesBodyShape(sld As Slide) As Shape
             End If
         End If
     Next shp
+    
     ' 見つからなかった場合のフォールバック(従来のインデックス指定)
     Set GetNotesBodyShape = sld.NotesPage.Shapes.Placeholders(2)
     On Error GoTo 0
@@ -224,7 +226,7 @@ Sub AddNoteInSlides()
         Dim slideText As String
         Dim targetNotesShape As Shape
         
-        ' スライドテキストを取得（グループ化対応版）
+        ' スライドテキストを取得（グループ化・除外設定対応版）
         slideText = GetSlideText(sld)
         Set targetNotesShape = GetNotesBodyShape(sld)
         
@@ -273,45 +275,78 @@ Sub RemoveNoteinSlides()
 End Sub
 
 ' -------------------------------------------------------------------------
-' グループ化された図形の中身も再帰的に探索してテキストを収集する関数
+' グループ化された図形の中身も再帰的に探索してテキストを収集する関数 (除外判定対応版)
 ' -------------------------------------------------------------------------
-Private Sub CollectTextShapes(ByVal shps As Object, ByRef shapeInfos() As ShapeInfo, ByRef shapeCount As Integer)
+Private Sub CollectTextShapes(ByVal shps As Object, ByRef shapeInfos() As ShapeInfo, ByRef shapeCount As Integer, ByVal sldWidth As Single, ByVal sldHeight As Single)
     Dim shp As Shape
     Dim i As Integer
+    Dim isTarget As Boolean
+    Dim shapeBottomLimitY As Single
     
     For i = 1 To shps.Count
         Set shp = shps(i)
         
         If shp.Type = msoGroup Then
             ' グループ化されている場合は再帰呼び出しで中身を探索
-            CollectTextShapes shp.GroupItems, shapeInfos, shapeCount
+            CollectTextShapes shp.GroupItems, shapeInfos, shapeCount, sldWidth, sldHeight
         Else
             ' テキストフレームを持っているか確認
             If shp.HasTextFrame Then
                 If shp.TextFrame.HasText Then
-                    shapeCount = shapeCount + 1
-                    ReDim Preserve shapeInfos(1 To shapeCount)
-                    shapeInfos(shapeCount).text = shp.TextFrame.TextRange.text
-                    shapeInfos(shapeCount).Top = shp.Top
-                    shapeInfos(shapeCount).Left = shp.Left
+                    isTarget = True
+                    
+                    ' ★判定1: 完全に画面外にある要素を除外
+                    If excludeOutside Then
+                        ' 右端が0未満、左端がスライド幅以上、下端が0未満、上端がスライド高さ以上
+                        If (shp.Left + shp.Width < 0) Or (shp.Left > sldWidth) Or _
+                           (shp.Top + shp.Height < 0) Or (shp.Top > sldHeight) Then
+                            isTarget = False
+                        End If
+                    End If
+                    
+                    ' ★判定2: 画面下部（閾値以下）に「のみ」存在する要素を除外
+                    If isTarget And excludeBottom Then
+                        ' 下部閾値のY座標を算出 (例: 10% なら スライド高さの90%の位置)
+                        shapeBottomLimitY = sldHeight * (1 - (bottomThreshold / 100))
+                        
+                        ' シェイプの上端(Top)が閾値Yラインより下にある＝シェイプ全体が下部エリア内にある
+                        If shp.Top >= shapeBottomLimitY Then
+                            isTarget = False
+                        End If
+                    End If
+                    
+                    ' 判定を通過したものだけを配列に格納
+                    If isTarget Then
+                        shapeCount = shapeCount + 1
+                        ReDim Preserve shapeInfos(1 To shapeCount)
+                        shapeInfos(shapeCount).text = shp.TextFrame.TextRange.text
+                        shapeInfos(shapeCount).Top = shp.Top
+                        shapeInfos(shapeCount).Left = shp.Left
+                    End If
                 End If
             End If
         End If
     Next i
 End Sub
 
-' スライドからテキストを取得する関数 (グループ化対応＆クリーンアップ版)
+' スライドからテキストを取得する関数 (グループ化・除外設定対応版)
 Function GetSlideText(ByVal sld As Slide) As String
     Dim shapeInfos() As ShapeInfo
     Dim shapeCount As Integer
     Dim i As Integer, j As Integer
     Dim temp As ShapeInfo
     Dim resultText As String
+    Dim sldWidth As Single
+    Dim sldHeight As Single
+    
+    ' スライドのサイズを取得 (除外判定用)
+    sldWidth = ActivePresentation.PageSetup.SlideWidth
+    sldHeight = ActivePresentation.PageSetup.SlideHeight
     
     shapeCount = 0
     
-    ' スライド内の全シェイプからテキストを収集（再帰処理でグループ化対応）
-    CollectTextShapes sld.Shapes, shapeInfos, shapeCount
+    ' スライド内の全シェイプからテキストを収集（再帰処理でグループ化・除外設定対応）
+    CollectTextShapes sld.Shapes, shapeInfos, shapeCount, sldWidth, sldHeight
     
     ' テキストが見つからなかった場合
     If shapeCount = 0 Then

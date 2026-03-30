@@ -14,6 +14,11 @@ Public Ribbon As IRibbonUI
 Public circleXPosition As Integer
 Public showAudioIcon As Boolean
 
+' ★追加：除外設定用の変数
+Public excludeOutside As Boolean
+Public excludeBottom As Boolean
+Public bottomThreshold As Double
+
 Private Const InitialShowAudioIcon As Boolean = False
 Private Const InitialStartDelay As Double = 2#
 Private Const InitialEndDelay As Double = 3#
@@ -24,6 +29,11 @@ Private Const InitialDoOverride As Boolean = True
 Private Const InitialUseAudioFolder As Boolean = False
 Private Const InitialProcessDiff As Boolean = True
 Private Const InitialCircleXPosition As Integer = -50
+
+' ★追加：除外設定用の初期値
+Private Const InitialExcludeOutside As Boolean = True
+Private Const InitialExcludeBottom As Boolean = True
+Private Const InitialBottomThreshold As Double = 10#
 
 Private Const SettingsFileName As String = "settings.txt"
 
@@ -53,6 +63,11 @@ Private Sub SetDefaultValues()
     processDiff = InitialProcessDiff
     circleXPosition = InitialCircleXPosition
     showAudioIcon = InitialShowAudioIcon
+    
+    ' ★追加
+    excludeOutside = InitialExcludeOutside
+    excludeBottom = InitialExcludeBottom
+    bottomThreshold = InitialBottomThreshold
 End Sub
 
 ' 初期化コード（破損対策済み）
@@ -87,6 +102,10 @@ Sub ResetSettings()
         Ribbon.InvalidateControl "useAudioFolderBox"
         Ribbon.InvalidateControl "processDiffBox"
         Ribbon.InvalidateControl "audioXPositionDropdown"
+        ' ★追加
+        Ribbon.InvalidateControl "excludeOutsideBox"
+        Ribbon.InvalidateControl "excludeBottomBox"
+        Ribbon.InvalidateControl "bottomThresholdBox"
     Else
         Call HandleRibbonLoss
     End If
@@ -187,6 +206,30 @@ Sub OnShowAudioIconChange(control As IRibbonControl, pressed As Boolean)
     SaveSettings
 End Sub
 
+' ★追加：テキスト抽出の除外設定コールバック
+Sub OnExcludeOutsideChange(control As IRibbonControl, pressed As Boolean)
+    excludeOutside = pressed
+    SaveSettings
+End Sub
+
+Sub OnExcludeBottomChange(control As IRibbonControl, pressed As Boolean)
+    excludeBottom = pressed
+    SaveSettings
+End Sub
+
+Sub OnBottomThresholdChange(control As IRibbonControl, text As String)
+    Dim cleanText As String
+    cleanText = Replace(text, "%", "")
+    
+    If IsNumeric(cleanText) Then
+        bottomThreshold = CDbl(cleanText)
+        SaveSettings
+    Else
+        MsgBox "有効な数値を入力してください。", vbExclamation
+        If Not Ribbon Is Nothing Then Ribbon.InvalidateControl control.id
+    End If
+End Sub
+
 ' ==========================================
 ' 初期値を取得するコールバック
 ' ==========================================
@@ -220,6 +263,19 @@ End Sub
 
 Sub GetShowAudioIcon(control As IRibbonControl, ByRef returnedVal)
     returnedVal = showAudioIcon
+End Sub
+
+' ★追加
+Sub GetExcludeOutside(control As IRibbonControl, ByRef returnedVal)
+    returnedVal = excludeOutside
+End Sub
+
+Sub GetExcludeBottom(control As IRibbonControl, ByRef returnedVal)
+    returnedVal = excludeBottom
+End Sub
+
+Sub GetBottomThreshold(control As IRibbonControl, ByRef returnedVal)
+    returnedVal = bottomThreshold
 End Sub
 
 Sub GetAudioXPositionIndex(control As IRibbonControl, ByRef returnedVal)
@@ -264,6 +320,12 @@ Sub SaveSettings()
     Print #fileNum, "UseAudioFolder=" & useAudioFolder
     Print #fileNum, "ProcessDiff=" & processDiff
     Print #fileNum, "ShowAudioIcon=" & showAudioIcon
+    
+    ' ★追加
+    Print #fileNum, "ExcludeOutside=" & excludeOutside
+    Print #fileNum, "ExcludeBottom=" & excludeBottom
+    Print #fileNum, "BottomThreshold=" & bottomThreshold
+    
     Close #fileNum
     Exit Sub
 ErrorHandler:
@@ -298,6 +360,11 @@ Sub LoadSettings()
                 Case "UseAudioFolder": useAudioFolder = CBool(parts(1))
                 Case "ProcessDiff": processDiff = CBool(parts(1))
                 Case "ShowAudioIcon": showAudioIcon = CBool(parts(1))
+                
+                ' ★追加
+                Case "ExcludeOutside": excludeOutside = CBool(parts(1))
+                Case "ExcludeBottom": excludeBottom = CBool(parts(1))
+                Case "BottomThreshold": bottomThreshold = CDbl(parts(1))
             End Select
             On Error GoTo ErrorHandler ' エラーハンドラを戻す
         End If
