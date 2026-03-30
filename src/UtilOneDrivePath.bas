@@ -1,11 +1,40 @@
 Attribute VB_Name = "UtilOneDrivePath"
 Option Explicit
 
+' 簡易的なURLデコード関数（よく使われる記号やスペースに対応）
+Private Function DecodeURL(ByVal encodedURL As String) As String
+    Dim s As String
+    s = encodedURL
+    
+    ' よく問題になる文字をデコード（%25(%)は最後に置換する）
+    s = Replace(s, "%20", " ")
+    s = Replace(s, "%28", "(")
+    s = Replace(s, "%29", ")")
+    s = Replace(s, "%5B", "[")
+    s = Replace(s, "%5D", "]")
+    s = Replace(s, "%7B", "{")
+    s = Replace(s, "%7D", "}")
+    s = Replace(s, "%5E", "^")
+    s = Replace(s, "%2D", "-")
+    s = Replace(s, "%5F", "_")
+    s = Replace(s, "%3D", "=")
+    s = Replace(s, "%2B", "+")
+    s = Replace(s, "%26", "&")
+    s = Replace(s, "%24", "$")
+    s = Replace(s, "%23", "#")
+    s = Replace(s, "%25", "%")
+    
+    DecodeURL = s
+End Function
+
 ' ==============================================================================
 ' OneDriveのURLをローカルのファイルパスに変換する関数
 ' (フルスクラッチによる独自実装のため、ライセンスの制約なく自由に利用可能)
 ' ==============================================================================
 Public Function OneDriveUrlToLocalPath(ByVal FilePath As String) As String
+    ' ★追加: 処理の最初にURLデコードを行う
+    FilePath = DecodeURL(FilePath)
+
     ' "https://" から始まらない場合は、既にローカルパスとみなしてそのまま返す
     If InStr(1, FilePath, "https://", vbTextCompare) <> 1 Then
         OneDriveUrlToLocalPath = FilePath

@@ -10,6 +10,8 @@ Declare PtrSafe Function GlobalAlloc Lib "kernel32" (ByVal uFlags As Long, ByVal
 Declare PtrSafe Function GlobalLock Lib "kernel32" (ByVal hMem As LongPtr) As LongPtr
 Declare PtrSafe Function GlobalUnlock Lib "kernel32" (ByVal hMem As LongPtr) As Long
 Declare PtrSafe Function lstrcpyW Lib "kernel32" (ByVal lpString1 As LongPtr, ByVal lpString2 As LongPtr) As LongPtr
+' ★追加: メモリ解放のためのAPI
+Declare PtrSafe Function GlobalFree Lib "kernel32" (ByVal hMem As LongPtr) As LongPtr
 
 Const GHND = &H42
 Const CF_UNICODETEXT = 13
@@ -32,6 +34,12 @@ Sub CopyToClipboard(text As String)
         ' グローバルメモリを確保する
         hGlobalMemory = GlobalAlloc(GHND, textLength)
         
+        ' ★追加: メモリ確保に失敗した場合は処理を抜ける
+        If hGlobalMemory = 0 Then
+            CloseClipboard
+            Exit Sub
+        End If
+        
         ' グローバルメモリをロックする
         lpGlobalMemory = GlobalLock(hGlobalMemory)
 
@@ -42,7 +50,13 @@ Sub CopyToClipboard(text As String)
         GlobalUnlock hGlobalMemory
 
         ' クリップボードにデータを設定する
-        SetClipboardData CF_UNICODETEXT, hGlobalMemory
+        hClipboardData = SetClipboardData(CF_UNICODETEXT, hGlobalMemory)
+        
+        ' ★追加: SetClipboardDataが失敗した場合(戻り値が0)は、自分でメモリを解放してリークを防ぐ
+        ' 成功した場合は、システムがメモリ管理を引き継ぐため解放してはいけない
+        If hClipboardData = 0 Then
+            GlobalFree hGlobalMemory
+        End If
 
         ' クリップボードを閉じる
         CloseClipboard
@@ -94,4 +108,3 @@ Function TrimWhitespace(inputText As String) As String
     
     TrimWhitespace = inputText
 End Function
-
