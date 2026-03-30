@@ -12,9 +12,9 @@ Public useAudioFolder As Boolean
 Public processDiff As Boolean
 Public Ribbon As IRibbonUI
 Public circleXPosition As Integer
-Public hideAudioIcon As Boolean
+Public showAudioIcon As Boolean ' ★変更: hideAudioIcon -> showAudioIcon
 
-Private Const InitialHideAudioIcon As Boolean = False
+Private Const InitialShowAudioIcon As Boolean = False ' ★変更: デフォルトは非表示
 Private Const InitialStartDelay As Double = 2#
 Private Const InitialEndDelay As Double = 3#
 Private Const InitialAudioXPosition As Integer = -50
@@ -66,14 +66,14 @@ Sub ResetSettings()
     useAudioFolder = InitialUseAudioFolder
     processDiff = InitialProcessDiff
     circleXPosition = InitialCircleXPosition
-    hideAudioIcon = InitialHideAudioIcon
+    showAudioIcon = InitialShowAudioIcon ' ★変更
 
     SaveSettings
 
     ' リボンUIの更新
     If Not Ribbon Is Nothing Then
         Ribbon.InvalidateControl "circleXPositionDropdown"
-        Ribbon.InvalidateControl "hideAudioIconBox"
+        Ribbon.InvalidateControl "showAudioIconBox" ' ★変更
         Ribbon.InvalidateControl "startDelayBox"
         Ribbon.InvalidateControl "endDelayBox"
         Ribbon.InvalidateControl "transitTimeBox"
@@ -189,8 +189,9 @@ Sub OnCircleXPositionChange(control As IRibbonControl, id As String, index As In
     SaveSettings
 End Sub
 
-Sub OnHideAudioIconChange(control As IRibbonControl, pressed As Boolean)
-    hideAudioIcon = pressed
+' ★変更
+Sub OnShowAudioIconChange(control As IRibbonControl, pressed As Boolean)
+    showAudioIcon = pressed
     SaveSettings
 End Sub
 
@@ -225,8 +226,9 @@ Sub GetProcessDiff(control As IRibbonControl, ByRef returnedVal)
     returnedVal = processDiff
 End Sub
 
-Sub GetHideAudioIcon(control As IRibbonControl, ByRef returnedVal)
-    returnedVal = hideAudioIcon
+' ★変更
+Sub GetShowAudioIcon(control As IRibbonControl, ByRef returnedVal)
+    returnedVal = showAudioIcon
 End Sub
 
 Sub GetAudioXPositionIndex(control As IRibbonControl, ByRef returnedVal)
@@ -270,7 +272,7 @@ Sub SaveSettings()
     Print #fileNum, "DoOverride=" & doOverride
     Print #fileNum, "UseAudioFolder=" & useAudioFolder
     Print #fileNum, "ProcessDiff=" & processDiff
-    Print #fileNum, "HideAudioIcon=" & hideAudioIcon
+    Print #fileNum, "ShowAudioIcon=" & showAudioIcon ' ★変更
     Close #fileNum
     Debug.Print "Settings saved successfully to " & settingsFilePath
     Exit Sub
@@ -302,7 +304,7 @@ Sub LoadSettings()
                 Case "DoOverride": doOverride = CBool(parts(1))
                 Case "UseAudioFolder": useAudioFolder = CBool(parts(1))
                 Case "ProcessDiff": processDiff = CBool(parts(1))
-                Case "HideAudioIcon": hideAudioIcon = CBool(parts(1))
+                Case "ShowAudioIcon": showAudioIcon = CBool(parts(1)) ' ★変更
             End Select
         End If
     Loop

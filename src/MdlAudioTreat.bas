@@ -124,10 +124,10 @@ Sub AddAudioToSlide(sld As Slide)
         effect.Timing.TriggerDelayTime = startDelay
         
         ' 最後に表示/非表示を切り替える
-        If hideAudioIcon Then
-            shp.AnimationSettings.PlaySettings.HideWhileNotPlaying = msoTrue
-        Else
+        If showAudioIcon Then
             shp.AnimationSettings.PlaySettings.HideWhileNotPlaying = msoFalse
+        Else
+            shp.AnimationSettings.PlaySettings.HideWhileNotPlaying = msoTrue
         End If
     End If
 End Sub
@@ -175,10 +175,10 @@ Sub MoveAudioInSlide(sld As Slide)
                 shp.Top = sld.Master.Height - 50
 
                 ' 2. 音声アイコンの表示/非表示の再設定
-                If hideAudioIcon Then
-                    shp.AnimationSettings.PlaySettings.HideWhileNotPlaying = msoTrue
-                Else
+                If showAudioIcon Then
                     shp.AnimationSettings.PlaySettings.HideWhileNotPlaying = msoFalse
+                Else
+                    shp.AnimationSettings.PlaySettings.HideWhileNotPlaying = msoTrue
                 End If
                 
                 ' 3. ★追加：開始遅延の再設定
