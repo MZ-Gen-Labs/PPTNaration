@@ -1,30 +1,29 @@
 Attribute VB_Name = "UtilOneDrivePath"
 Option Explicit
 
-' 簡易的なURLデコード関数（よく使われる記号やスペースに対応）
+' 完璧なURLデコード関数（日本語UTF-8・全記号対応版）
 Private Function DecodeURL(ByVal encodedURL As String) As String
-    Dim s As String
-    s = encodedURL
+    On Error Resume Next
+    ' Windows標準の htmlfile COMオブジェクトを利用してJSエンジンを呼び出す
+    Dim html As Object
+    Set html = CreateObject("htmlfile")
     
-    ' よく問題になる文字をデコード（%25(%)は最後に置換する）
-    s = Replace(s, "%20", " ")
-    s = Replace(s, "%28", "(")
-    s = Replace(s, "%29", ")")
-    s = Replace(s, "%5B", "[")
-    s = Replace(s, "%5D", "]")
-    s = Replace(s, "%7B", "{")
-    s = Replace(s, "%7D", "}")
-    s = Replace(s, "%5E", "^")
-    s = Replace(s, "%2D", "-")
-    s = Replace(s, "%5F", "_")
-    s = Replace(s, "%3D", "=")
-    s = Replace(s, "%2B", "+")
-    s = Replace(s, "%26", "&")
-    s = Replace(s, "%24", "$")
-    s = Replace(s, "%23", "#")
-    s = Replace(s, "%25", "%")
+    Dim window As Object
+    Set window = html.parentWindow
     
-    DecodeURL = s
+    ' JavaScriptの decodeURIComponent を実行する関数を定義
+    window.execScript "function decodeUTF8(s) { try { return decodeURIComponent(s); } catch(e) { return s; } }", "JScript"
+    
+    Dim decoded As String
+    decoded = window.decodeUTF8(encodedURL)
+    
+    ' JS実行に成功した場合はそれを返し、万が一失敗した場合はそのまま返す
+    If Err.Number = 0 And decoded <> "" Then
+        DecodeURL = decoded
+    Else
+        DecodeURL = encodedURL
+    End If
+    On Error GoTo 0
 End Function
 
 ' ==============================================================================
@@ -32,7 +31,7 @@ End Function
 ' (フルスクラッチによる独自実装のため、ライセンスの制約なく自由に利用可能)
 ' ==============================================================================
 Public Function OneDriveUrlToLocalPath(ByVal FilePath As String) As String
-    ' ★追加: 処理の最初にURLデコードを行う
+    ' ★追加: 処理の最初に完全なURLデコードを行う
     FilePath = DecodeURL(FilePath)
 
     ' "https://" から始まらない場合は、既にローカルパスとみなしてそのまま返す

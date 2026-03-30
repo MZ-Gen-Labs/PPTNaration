@@ -112,7 +112,7 @@ Sub ImportNoteFromText()
     stream.Close
     Set stream = Nothing
     
-    ' ★修正ポイント：PowerPoint内部の改行(vbCr)と、ファイルの改行(vbCrLf)を
+    ' PowerPoint内部の改行(vbCr)と、ファイルの改行(vbCrLf)を
     ' 全て一律で vbLf に統一してから分割することで、スライド内の改行を保護する。
     allText = Replace(allText, vbCrLf, vbLf)
     allText = Replace(allText, vbCr, vbLf)
@@ -125,7 +125,7 @@ Sub ImportNoteFromText()
 
     ' 各行を処理
     For i = 0 To UBound(lines)
-        lineText = lines(i) ' ※ここで Replace(..., vbCr, "") をしない！
+        lineText = lines(i)
         
         If InStr(lineText, "<<< Slide ") = 1 Then
             slideNumber = CLng(Replace(lineText, "<<< Slide ", ""))
@@ -139,15 +139,16 @@ Sub ImportNoteFromText()
                 On Error Resume Next
                 Set notesShape = GetNotesBodyShape(targetSlide)
                 If Not notesShape Is Nothing Then
+                    ' ★修正：PowerPointの正規改行コード(vbCr)を使用して追記する
                     notesShape.TextFrame.TextRange.text = _
-                        notesShape.TextFrame.TextRange.text & lineText & vbCrLf
+                        notesShape.TextFrame.TextRange.text & lineText & vbCr
                 End If
                 On Error GoTo ErrorHandler
             End If
         End If
     Next i
 
-    ' ★追加改善：インポート後に、各スライドのノート末尾に溜まった余分な改行を綺麗に削除する
+    ' インポート後に、各スライドのノート末尾に溜まった余分な改行を綺麗に削除する
     For Each sld In ActivePresentation.Slides
         On Error Resume Next
         Set notesShape = GetNotesBodyShape(sld)
@@ -179,7 +180,7 @@ Private Function GetSlideByNumber(ByVal sNum As Long) As Slide
 End Function
 
 ' -------------------------------------------------------------------------
-' ★新規追加：ノートの本文プレースホルダーを安全に取得する関数
+' ノートの本文プレースホルダーを安全に取得する関数
 ' -------------------------------------------------------------------------
 Private Function GetNotesBodyShape(sld As Slide) As Shape
     Dim shp As Shape
@@ -272,7 +273,7 @@ Sub RemoveNoteinSlides()
 End Sub
 
 ' -------------------------------------------------------------------------
-' ★新規追加：グループ化された図形の中身も再帰的に探索してテキストを収集する関数
+' グループ化された図形の中身も再帰的に探索してテキストを収集する関数
 ' -------------------------------------------------------------------------
 Private Sub CollectTextShapes(ByVal shps As Object, ByRef shapeInfos() As ShapeInfo, ByRef shapeCount As Integer)
     Dim shp As Shape
@@ -331,9 +332,15 @@ Function GetSlideText(ByVal sld As Slide) As String
     Next i
     
     ' 並べ替えたテキストを結合
+    ' ★修正：ここでもPowerPointの正規改行コード(vbCr)を使用して結合する
     For i = 1 To shapeCount
-        resultText = resultText & shapeInfos(i).text & vbNewLine
+        resultText = resultText & shapeInfos(i).text & vbCr
     Next i
+    
+    ' 末尾に付与された余分な改行を削除
+    If Len(resultText) > 0 Then
+        resultText = Left(resultText, Len(resultText) - 1)
+    End If
     
     GetSlideText = Trim(resultText)
 End Function
