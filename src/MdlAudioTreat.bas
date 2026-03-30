@@ -88,6 +88,8 @@ Sub AddAudioToSlide(sld As Slide)
     Dim effect As effect
     Dim presentationName As String
 
+    On Error GoTo ErrorHandler ' メディア挿入時の不測のクラッシュを防止
+
     slideNumber = sld.slideNumber
 
     If useAudioFolder Then
@@ -101,11 +103,16 @@ Sub AddAudioToSlide(sld As Slide)
         Exit Sub
     End If
 
+    ' ★拡張：よく使われる音声フォーマットに幅広く対応
     audioFile = ""
     If Dir(filePath & slideNumber & ".wav") <> "" Then
         audioFile = filePath & slideNumber & ".wav"
     ElseIf Dir(filePath & slideNumber & ".mp3") <> "" Then
         audioFile = filePath & slideNumber & ".mp3"
+    ElseIf Dir(filePath & slideNumber & ".m4a") <> "" Then
+        audioFile = filePath & slideNumber & ".m4a"
+    ElseIf Dir(filePath & slideNumber & ".wma") <> "" Then
+        audioFile = filePath & slideNumber & ".wma"
     End If
 
     If audioFile <> "" Then
@@ -119,7 +126,7 @@ Sub AddAudioToSlide(sld As Slide)
         ' 音声オブジェクトに確実にタグを設定する
         shp.Tags.Add Name:="AudioObject", Value:="True"
 
-        ' ★修正点：アニメーションを「非表示にする前」に確実に登録する
+        ' アニメーションを「非表示にする前」に確実に登録する
         Set effect = sld.TimeLine.MainSequence.AddEffect(shp, msoAnimEffectMediaPlay, Trigger:=msoAnimTriggerWithPrevious)
         effect.Timing.TriggerDelayTime = startDelay
         
@@ -130,6 +137,10 @@ Sub AddAudioToSlide(sld As Slide)
             shp.AnimationSettings.PlaySettings.HideWhileNotPlaying = msoTrue
         End If
     End If
+    Exit Sub
+
+ErrorHandler:
+    MsgBox "スライド " & slideNumber & " への音声追加中にエラーが発生しました。ファイル形式が未対応か壊れている可能性があります。" & vbCrLf & Err.Description, vbExclamation, "メディア挿入エラー"
 End Sub
 
 Sub AddAutoTransitToSlide(sld As Slide)
@@ -142,8 +153,7 @@ Sub RemoveAudioFromSlide(sld As Slide)
     Dim i As Long
     For i = sld.Shapes.Count To 1 Step -1
         Set shp = sld.Shapes(i)
-
-        ' 音声オブジェクトの削除（タグで判定）
+        
         If shp.Type = msoMedia Then
             If shp.Tags.Item("AudioObject") = "True" Then
                 shp.Delete
@@ -151,7 +161,6 @@ Sub RemoveAudioFromSlide(sld As Slide)
             End If
         End If
 
-        ' 楕円（ダミー円）の削除（タグで判定）
         If shp.AutoShapeType = msoShapeOval Then
             If shp.Tags.Item("AudioControl") = "True" Then
                 shp.Delete
@@ -164,11 +173,10 @@ End Sub
 
 Sub MoveAudioInSlide(sld As Slide)
     Dim shp As Shape
-    Dim eff As Effect ' ★追加：アニメーション情報を取得するための変数
+    Dim eff As Effect
     
     For Each shp In sld.Shapes
         If shp.Type = msoMedia Then
-            ' ★修正点：座標のズレに影響されないよう、すべてタグで判定する
             If shp.Tags.Item("AudioObject") = "True" Then
                 ' 1. 位置の再設定
                 shp.Left = sld.Master.Width + audioXPosition
@@ -181,16 +189,12 @@ Sub MoveAudioInSlide(sld As Slide)
                     shp.AnimationSettings.PlaySettings.HideWhileNotPlaying = msoTrue
                 End If
                 
-                ' 3. ★追加：開始遅延の再設定
-                ' スライド内の全アニメーション（タイムライン）をループ処理
+                ' 3. 開始遅延の再設定
                 For Each eff In sld.TimeLine.MainSequence
-                    ' アニメーションの対象がこの音声ファイルであり、かつ「再生」エフェクトである場合
                     If eff.Shape.Name = shp.Name And eff.EffectType = msoAnimEffectMediaPlay Then
-                        ' 現在の startDelay（開始遅延）の値を上書き設定する
                         eff.Timing.TriggerDelayTime = startDelay
                     End If
                 Next eff
-                
             End If
         End If
     Next shp
@@ -202,7 +206,6 @@ Sub MoveAudioPosition(x As Integer, y As Integer)
     For Each sld In ActivePresentation.Slides
         For Each shp In sld.Shapes
             If shp.Type = msoMedia Then
-                ' ★ここもタグ判定に修正
                 If shp.Tags.Item("AudioObject") = "True" Then
                     shp.Left = sld.Master.Width + x
                     shp.Top = sld.Master.Height + y
@@ -222,20 +225,18 @@ End Sub
 Sub MakeAllVideosTransparent()
     Dim sld As Slide
     Dim shp As Shape
-    On Error GoTo ErrorHandler
+    ' ★修正：エラーで処理全体が止まるのを防ぐため、ループ内でResume Nextを使用
     For Each sld In ActivePresentation.Slides
         For Each shp In sld.Shapes
             If shp.Type = msoMedia Then
-                ' ★ここもタグ判定に修正
                 If shp.Tags.Item("AudioObject") = "True" Then
+                    On Error Resume Next
                     shp.Fill.Transparency = 1
+                    On Error GoTo 0
                 End If
             End If
         Next shp
     Next sld
-    Exit Sub
-ErrorHandler:
-    MsgBox "エラーが発生しました。エラー番号: " & Err.Number & " エラーの内容: " & Err.Description, vbCritical
 End Sub
 
 Sub MakeAudioTransparent(shp As Shape, Optional transparencyLevel As Single = 1)

@@ -12,9 +12,9 @@ Public useAudioFolder As Boolean
 Public processDiff As Boolean
 Public Ribbon As IRibbonUI
 Public circleXPosition As Integer
-Public showAudioIcon As Boolean ' ★変更: hideAudioIcon -> showAudioIcon
+Public showAudioIcon As Boolean
 
-Private Const InitialShowAudioIcon As Boolean = False ' ★変更: デフォルトは非表示
+Private Const InitialShowAudioIcon As Boolean = False
 Private Const InitialStartDelay As Double = 2#
 Private Const InitialEndDelay As Double = 3#
 Private Const InitialAudioXPosition As Integer = -50
@@ -25,7 +25,6 @@ Private Const InitialUseAudioFolder As Boolean = False
 Private Const InitialProcessDiff As Boolean = True
 Private Const InitialCircleXPosition As Integer = -50
 
-' ★修正1: 保存ファイル名をスッキリ変更
 Private Const SettingsFileName As String = "settings.txt"
 
 ' 設定ファイルのパスを取得する関数
@@ -33,7 +32,6 @@ Private Function GetSettingsFilePath() As String
     Dim localAppDataPath As String
     localAppDataPath = Environ("LOCALAPPDATA")
 
-    ' ★修正1: フォルダ名を "PPTNaration" に統一
     Dim appFolderPath As String
     appFolderPath = localAppDataPath & "\PPTNaration"
     If Dir(appFolderPath, vbDirectory) = "" Then
@@ -43,20 +41,8 @@ Private Function GetSettingsFilePath() As String
     GetSettingsFilePath = appFolderPath & "\" & SettingsFileName
 End Function
 
-' 初期化コード
-Sub InitializeVariables()
-    Dim settingsFilePath As String
-    settingsFilePath = GetSettingsFilePath()
-
-    If FileExists(settingsFilePath) Then
-        LoadSettings
-    Else
-        ResetSettings
-    End If
-End Sub
-
-' 設定をリセットする関数
-Sub ResetSettings()
+' ★新規：内部変数のみを安全に初期化するサブルーチン（UI更新なし）
+Private Sub SetDefaultValues()
     startDelay = InitialStartDelay
     endDelay = InitialEndDelay
     audioXPosition = InitialAudioXPosition
@@ -66,14 +52,33 @@ Sub ResetSettings()
     useAudioFolder = InitialUseAudioFolder
     processDiff = InitialProcessDiff
     circleXPosition = InitialCircleXPosition
-    showAudioIcon = InitialShowAudioIcon ' ★変更
+    showAudioIcon = InitialShowAudioIcon
+End Sub
 
+' 初期化コード（破損対策済み）
+Sub InitializeVariables()
+    ' まずデフォルト値で埋め、破損ファイル読み込み時の0初期化バグを防ぐ
+    SetDefaultValues
+    
+    Dim settingsFilePath As String
+    settingsFilePath = GetSettingsFilePath()
+
+    If FileExists(settingsFilePath) Then
+        LoadSettings
+    Else
+        SaveSettings ' 初回起動時はデフォルト値を保存
+    End If
+End Sub
+
+' ユーザー操作による設定リセット関数
+Sub ResetSettings()
+    SetDefaultValues
     SaveSettings
 
     ' リボンUIの更新
     If Not Ribbon Is Nothing Then
         Ribbon.InvalidateControl "circleXPositionDropdown"
-        Ribbon.InvalidateControl "showAudioIconBox" ' ★変更
+        Ribbon.InvalidateControl "showAudioIconBox"
         Ribbon.InvalidateControl "startDelayBox"
         Ribbon.InvalidateControl "endDelayBox"
         Ribbon.InvalidateControl "transitTimeBox"
@@ -83,63 +88,53 @@ Sub ResetSettings()
         Ribbon.InvalidateControl "processDiffBox"
         Ribbon.InvalidateControl "audioXPositionDropdown"
     Else
-        ' ★修正3: デッドコードを削除し、純粋なエラーハンドリングのみに
         Call HandleRibbonLoss
     End If
 
     MsgBox "変数を初期値にリセットしました。", vbInformation
-    Debug.Print "Settings reset to default values"
 End Sub
 
-' リボンのリセットボタンのコールバック関数
 Sub OnResetSettings(control As IRibbonControl)
     Dim response As VbMsgBoxResult
     response = MsgBox("変数を初期化しますか?", vbYesNo + vbQuestion, "変数初期化")
-
-    If response = vbYes Then
-        ResetSettings
-    End If
+    If response = vbYes Then ResetSettings
 End Sub
 
-' リボンが読み込まれたときのイベント
 Sub RibbonOnLoad(ribbonUI As IRibbonUI)
     Set Ribbon = ribbonUI
     InitializeVariables
 End Sub
 
 ' ==========================================
-' XML UI コールバック
+' XML UI コールバック (UI消失時も変数は更新するよう改善)
 ' ==========================================
 Sub OnStartDelayChange(control As IRibbonControl, text As String)
-    If Ribbon Is Nothing Then Call HandleRibbonLoss: Exit Sub
     If IsNumeric(text) Then
         startDelay = CDbl(text)
         SaveSettings
     Else
         MsgBox "有効な数値を入力してください。", vbExclamation
-        Ribbon.InvalidateControl control.id
+        If Not Ribbon Is Nothing Then Ribbon.InvalidateControl control.id
     End If
 End Sub
 
 Sub OnEndDelayChange(control As IRibbonControl, text As String)
-    If Ribbon Is Nothing Then Call HandleRibbonLoss: Exit Sub
     If IsNumeric(text) Then
         endDelay = CDbl(text)
         SaveSettings
     Else
         MsgBox "有効な数値を入力してください。", vbExclamation
-        Ribbon.InvalidateControl control.id
+        If Not Ribbon Is Nothing Then Ribbon.InvalidateControl control.id
     End If
 End Sub
 
 Sub OnTransitTimeChange(control As IRibbonControl, text As String)
-    If Ribbon Is Nothing Then Call HandleRibbonLoss: Exit Sub
     If IsNumeric(text) Then
         transitTime = CDbl(text)
         SaveSettings
     Else
         MsgBox "有効な数値を入力してください。", vbExclamation
-        Ribbon.InvalidateControl control.id
+        If Not Ribbon Is Nothing Then Ribbon.InvalidateControl control.id
     End If
 End Sub
 
@@ -164,7 +159,6 @@ Sub OnProcessDiffChange(control As IRibbonControl, pressed As Boolean)
 End Sub
 
 Sub OnAudioXPositionChange(control As IRibbonControl, id As String, index As Integer)
-    If Ribbon Is Nothing Then Call HandleRibbonLoss: Exit Sub
     Select Case id
         Case "pos50": audioXPosition = 50
         Case "pos-50": audioXPosition = -50
@@ -177,7 +171,6 @@ Sub OnAudioXPositionChange(control As IRibbonControl, id As String, index As Int
 End Sub
 
 Sub OnCircleXPositionChange(control As IRibbonControl, id As String, index As Integer)
-    If Ribbon Is Nothing Then Call HandleRibbonLoss: Exit Sub
     Select Case id
         Case "circle50":  circleXPosition = 50
         Case "circle-50": circleXPosition = -50
@@ -189,7 +182,6 @@ Sub OnCircleXPositionChange(control As IRibbonControl, id As String, index As In
     SaveSettings
 End Sub
 
-' ★変更
 Sub OnShowAudioIconChange(control As IRibbonControl, pressed As Boolean)
     showAudioIcon = pressed
     SaveSettings
@@ -226,7 +218,6 @@ Sub GetProcessDiff(control As IRibbonControl, ByRef returnedVal)
     returnedVal = processDiff
 End Sub
 
-' ★変更
 Sub GetShowAudioIcon(control As IRibbonControl, ByRef returnedVal)
     returnedVal = showAudioIcon
 End Sub
@@ -254,7 +245,7 @@ Sub GetCircleXPositionIndex(control As IRibbonControl, ByRef returnedVal)
 End Sub
 
 ' ==========================================
-' 設定の保存と読み込み
+' 設定の保存と読み込み（エラーハンドリング強化）
 ' ==========================================
 Sub SaveSettings()
     On Error GoTo ErrorHandler
@@ -272,12 +263,12 @@ Sub SaveSettings()
     Print #fileNum, "DoOverride=" & doOverride
     Print #fileNum, "UseAudioFolder=" & useAudioFolder
     Print #fileNum, "ProcessDiff=" & processDiff
-    Print #fileNum, "ShowAudioIcon=" & showAudioIcon ' ★変更
+    Print #fileNum, "ShowAudioIcon=" & showAudioIcon
     Close #fileNum
-    Debug.Print "Settings saved successfully to " & settingsFilePath
     Exit Sub
 ErrorHandler:
-    MsgBox "設定の保存中にエラーが発生しました: " & Err.Description, vbCritical
+    MsgBox "設定の保存中にエラーが発生しました: " & Err.Description, vbExclamation
+    On Error Resume Next ' 二重エラー防止
     If fileNum > 0 Then Close #fileNum
 End Sub
 
@@ -294,6 +285,8 @@ Sub LoadSettings()
         Line Input #fileNum, line
         parts = Split(line, "=")
         If UBound(parts) = 1 Then
+            ' 破損データが混ざっていても無視して処理を続けるための保護
+            On Error Resume Next
             Select Case parts(0)
                 Case "StartDelay": startDelay = CDbl(parts(1))
                 Case "EndDelay": endDelay = CDbl(parts(1))
@@ -304,15 +297,15 @@ Sub LoadSettings()
                 Case "DoOverride": doOverride = CBool(parts(1))
                 Case "UseAudioFolder": useAudioFolder = CBool(parts(1))
                 Case "ProcessDiff": processDiff = CBool(parts(1))
-                Case "ShowAudioIcon": showAudioIcon = CBool(parts(1)) ' ★変更
+                Case "ShowAudioIcon": showAudioIcon = CBool(parts(1))
             End Select
+            On Error GoTo ErrorHandler ' エラーハンドラを戻す
         End If
     Loop
     Close #fileNum
-    Debug.Print "Settings loaded successfully"
     Exit Sub
 ErrorHandler:
-    MsgBox "設定の読み込み中にエラーが発生しました: " & Err.Description, vbCritical
+    On Error Resume Next
     If fileNum > 0 Then Close #fileNum
 End Sub
 
@@ -337,11 +330,11 @@ Sub TestPreview(control As IRibbonControl)
     On Error GoTo 0
 End Sub
 
-' リボンオブジェクトが Nothing だった場合の共通処理
 Sub HandleRibbonLoss()
     Debug.Print "Ribbon オブジェクトが Nothing です。"
-    MsgBox "VBAの内部エラーにより、リボンメニューの表示更新が一時的に停止しました。" & vbCrLf & _
-           "機能自体は使用可能ですが、チェックボックス等の表示を元に戻すにはPowerPointを再起動してください。", vbExclamation, "リボンの状態エラー"
+    MsgBox "VBAの内部状態によりリボンメニューの表示更新が一時停止しました。" & vbCrLf & _
+           "（内部の設定値は正常に変更・保存されています）" & vbCrLf & _
+           "表示を元に戻すにはPowerPointを再起動してください。", vbInformation, "リボンの状態"
 End Sub
 
 Function GetTargetSlide() As Slide
